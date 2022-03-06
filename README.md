@@ -1,7 +1,8 @@
 # Webbernet PG Backup tool
 
-### Why 
-We need a way to backup a Postgres database to S3 so that we can ship the backups offsite
+This tool allows to backup a set of Postgres databases on a recurring schedule. This script is designed to be always running.
+
+The script will upload each Postgres database and upload it to an S3 bucket.
 
 ### Setup
 
