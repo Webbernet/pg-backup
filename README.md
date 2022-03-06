@@ -2,7 +2,7 @@
 
 This tool allows to backup a set of Postgres databases on a recurring schedule. This script is designed to be always running.
 
-The script will upload each Postgres database and upload it to an S3 bucket.
+The script will backup each Postgres database via pg_dump and upload it to an S3 bucket.
 
 ### Setup
 
