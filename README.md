@@ -11,7 +11,7 @@ The script will backup each Postgres database via pg_dump and upload it to an S3
 
 ### Creating a backup user
 
-It's recommended to create a seperate user that the script can use for backups. Follow the following steps to set this up
+It's recommended to create a seperate Postgres user that the script can use for backups. Follow the following steps to set this up
 
 ```
 CREATE USER backupuser WITH PASSWORD 'foobar'; 
