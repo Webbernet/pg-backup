@@ -1,4 +1,4 @@
-## Webbernet PG Backup tool
+# Webbernet PG Backup tool
 
 ### Why 
 We need a way to backup a Postgres database to S3 so that we can ship the backups offsite
@@ -12,16 +12,17 @@ We need a way to backup a Postgres database to S3 so that we can ship the backup
 
 It's recommended to create a seperate user that the script can use for backups. Follow the following steps to set this up
 
+```
 $ CREATE USER backupuser; 
 
-// Connect to your database you wish to give access to
 $ ALTER DEFAULT PRIVILEGES in schema public grant select on sequences to backupuser;
 $ ALTER DEFAULT PRIVILEGES in schema public grant select on tables to backupuser;
 $ GRANT SELECT ON ALL TABLES IN SCHEMA public TO backupuser;
+```
 
 ## Running
 
-You will need a few parameters
+You can run the script with the following docker command
 
 ```
 docker run \
@@ -32,7 +33,6 @@ docker run \
 -e some_database_user=backupuser
 -e password=foobar
 webbernet/pg-backup 
-
 ```
 
 ### Params
@@ -47,4 +47,4 @@ webbernet/pg-backup
 | <DATABASE_NAME>_username | Yes | Database username |
 | <DATABASE_NAME>_password | Yes | Database password |
 
-*Note* You need to provide a host, username and password for every database you specify in the `DATABASE_NAMES` parameter.
+**Note** You need to provide a host, username and password for every database you specify in the `DATABASE_NAMES` parameter.
