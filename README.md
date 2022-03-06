@@ -14,11 +14,12 @@ The script will backup each Postgres database via pg_dump and upload it to an S3
 It's recommended to create a seperate user that the script can use for backups. Follow the following steps to set this up
 
 ```
-$ CREATE USER backupuser; 
+CREATE USER backupuser WITH PASSWORD 'foobar'; 
 
-$ ALTER DEFAULT PRIVILEGES in schema public grant select on sequences to backupuser;
-$ ALTER DEFAULT PRIVILEGES in schema public grant select on tables to backupuser;
-$ GRANT SELECT ON ALL TABLES IN SCHEMA public TO backupuser;
+ALTER DEFAULT PRIVILEGES in schema public grant select, usage on sequences to backupuser;
+ALTER DEFAULT PRIVILEGES in schema public grant select on tables to backupuser;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO backupuser;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO backupuser;
 ```
 
 ## Running
