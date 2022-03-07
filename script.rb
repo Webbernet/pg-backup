@@ -4,7 +4,7 @@ require 'date'
 DATABASES_TO_BACKUP  = (ENV["DATABASE_NAMES"] || "").split(",") 
 BACKUP_BUCKET        = ENV['S3_BUCKET_NAME']
 BACKUP_BUCKET_REGION = ENV['S3_REGION']
-SLEEP_INTERVAL       = ENV['SLEEP_INTERVAL'] || 1800
+SLEEP_INTERVAL       = (ENV['SLEEP_INTERVAL'] || 1800).to_i
 
 class SendToLog
   def self.call(msg)
