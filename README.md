@@ -18,7 +18,7 @@ CREATE USER backupuser WITH PASSWORD 'foobar';
 
 ALTER DEFAULT PRIVILEGES in schema public grant select, usage on sequences to backupuser;
 ALTER DEFAULT PRIVILEGES in schema public grant select on tables to backupuser;
-GRANT USAGE, SELECT ON ALL TABLES IN SCHEMA public TO backupuser;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO backupuser;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO backupuser;
 ```
 
