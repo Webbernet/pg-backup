@@ -80,6 +80,8 @@ class BackupProcess
       }]
     )
     SendToLog.call('Published BackupBytes metric')
+  rescue StandardError => e
+    SendToLog.call("Metric publish failed for #{@db_name} (backup already uploaded) - #{e}")
   end
 
   def delete_backup
