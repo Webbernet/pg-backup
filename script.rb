@@ -49,9 +49,12 @@ class BackupProcess
 
   def verify_backup
     @backup_bytes = File.exist?(@backup_filename) ? File.size(@backup_filename) : 0
-    return if @backup_bytes >= MIN_BACKUP_BYTES
+    if @backup_bytes < MIN_BACKUP_BYTES
+      raise "backup of #{@db_name} is #{@backup_bytes} bytes (expected at least #{MIN_BACKUP_BYTES}) - refusing to upload it"
+    end
 
-    raise "backup of #{@db_name} is #{@backup_bytes} bytes (expected at least #{MIN_BACKUP_BYTES}) - refusing to upload it"
+    _stdout, stderr, status = Open3.capture3('pg_restore', '--list', @backup_filename)
+    raise "backup of #{@db_name} is unreadable by pg_restore - #{stderr}" unless status.success?
   end
 
   def upload_to_s3
