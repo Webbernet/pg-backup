@@ -1,10 +1,14 @@
 require 'aws-sdk-s3'
+require 'aws-sdk-cloudwatch'
 require 'date'
+require 'open3'
 
-DATABASES_TO_BACKUP  = (ENV["DATABASE_NAMES"] || "").split(",") 
+DATABASES_TO_BACKUP  = (ENV["DATABASE_NAMES"] || "").split(",")
 BACKUP_BUCKET        = ENV['S3_BUCKET_NAME']
 BACKUP_BUCKET_REGION = ENV['S3_REGION']
 SLEEP_INTERVAL       = (ENV['SLEEP_INTERVAL'] || 1800).to_i
+MIN_BACKUP_BYTES     = (ENV['MIN_BACKUP_BYTES'] || 1024).to_i
+METRIC_NAMESPACE     = ENV['CLOUDWATCH_METRIC_NAMESPACE']
 
 class SendToLog
   def self.call(msg)
@@ -22,7 +26,10 @@ class BackupProcess
   def call
     SendToLog.call("Commencing backing up #{@db_name}")
     pg_dump
+    verify_backup
     upload_to_s3
+    publish_metric
+  ensure
     delete_backup
   end
 
@@ -31,9 +38,23 @@ class BackupProcess
   def pg_dump
     `echo *:*:*:*:#{@connection_params.password} > ~/.pgpass && chmod 0600 ~/.pgpass`
     SendToLog.call('Running pg_dump')
-    output = `pg_dump -Fc -O -x -h #{@connection_params.host} -d #{@db_name} -f #{@backup_filename} -U #{@connection_params.username}`
-    raise "Error when backing up #{output}" unless output == ''
+    _stdout, stderr, status = Open3.capture3(
+      'pg_dump', '-Fc', '-O', '-x',
+      '-h', @connection_params.host, '-d', @db_name,
+      '-f', @backup_filename, '-U', @connection_params.username
+    )
+    raise "pg_dump failed for #{@db_name} (#{status}) - #{stderr}" unless status.success?
     SendToLog.call('pg_dump complete')
+  end
+
+  def verify_backup
+    @backup_bytes = File.exist?(@backup_filename) ? File.size(@backup_filename) : 0
+    if @backup_bytes < MIN_BACKUP_BYTES
+      raise "backup of #{@db_name} is #{@backup_bytes} bytes (expected at least #{MIN_BACKUP_BYTES}) - refusing to upload it"
+    end
+
+    _stdout, stderr, status = Open3.capture3('pg_restore', '--list', @backup_filename)
+    raise "backup of #{@db_name} is unreadable by pg_restore - #{stderr}" unless status.success?
   end
 
   def upload_to_s3
@@ -42,9 +63,30 @@ class BackupProcess
     s3_key_path = @db_name + '/' + @backup_filename
     obj = s3.bucket(BACKUP_BUCKET).object(s3_key_path)
     obj.upload_file(@backup_filename)
+    @backup_bytes = obj.content_length
+  end
+
+  def publish_metric
+    return if METRIC_NAMESPACE.nil?
+
+    cloudwatch = Aws::CloudWatch::Client.new(region: BACKUP_BUCKET_REGION)
+    cloudwatch.put_metric_data(
+      namespace: METRIC_NAMESPACE,
+      metric_data: [{
+        metric_name: 'BackupBytes',
+        dimensions: [{ name: 'Database', value: @db_name }],
+        unit: 'Bytes',
+        value: @backup_bytes
+      }]
+    )
+    SendToLog.call('Published BackupBytes metric')
+  rescue StandardError => e
+    SendToLog.call("Metric publish failed for #{@db_name} (backup already uploaded) - #{e}")
   end
 
   def delete_backup
+    return unless File.exist?(@backup_filename)
+
     SendToLog.call('Deleting backup')
     File.delete(@backup_filename)
   end
@@ -83,4 +125,3 @@ loop do
   SendToLog.call("Completed Run. Next run in #{SLEEP_INTERVAL} seconds")
   sleep SLEEP_INTERVAL
 end
-

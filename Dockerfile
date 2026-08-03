@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
   postgresql-client-12 \
   postgresql-12
 
-RUN gem install aws-sdk-s3
+RUN gem install aws-sdk-s3 aws-sdk-cloudwatch
 
 COPY script.rb script.rb
 
