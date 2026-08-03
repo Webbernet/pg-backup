@@ -63,6 +63,7 @@ class BackupProcess
     s3_key_path = @db_name + '/' + @backup_filename
     obj = s3.bucket(BACKUP_BUCKET).object(s3_key_path)
     obj.upload_file(@backup_filename)
+    @backup_bytes = obj.content_length
   end
 
   def publish_metric
