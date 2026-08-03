@@ -38,7 +38,11 @@ class BackupProcess
   def pg_dump
     `echo *:*:*:*:#{@connection_params.password} > ~/.pgpass && chmod 0600 ~/.pgpass`
     SendToLog.call('Running pg_dump')
-    _stdout, stderr, status = Open3.capture3("pg_dump -Fc -O -x -h #{@connection_params.host} -d #{@db_name} -f #{@backup_filename} -U #{@connection_params.username}")
+    _stdout, stderr, status = Open3.capture3(
+      'pg_dump', '-Fc', '-O', '-x',
+      '-h', @connection_params.host, '-d', @db_name,
+      '-f', @backup_filename, '-U', @connection_params.username
+    )
     raise "pg_dump failed for #{@db_name} (exit status #{status.exitstatus}) - #{stderr}" unless status.success?
     SendToLog.call('pg_dump complete')
   end
