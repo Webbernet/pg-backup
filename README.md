@@ -48,6 +48,8 @@ webbernet/pg-backup
 | <DATABASE_NAME>_host | Yes | Database host |
 | <DATABASE_NAME>_username | Yes | Database username |
 | <DATABASE_NAME>_password | Yes | Database password |
+| CLOUDWATCH_METRIC_NAMESPACE | - | When set, publishes a `BackupBytes` metric (dimension `Database`) to CloudWatch after each successful upload |
+| METRIC_TIMESTAMP_UTC | - | Time of day in UTC (`HH:MM`) written on the `BackupBytes` datapoint instead of the upload finish time, so every night lands exactly 24 hours after the last. Default `12:00`. Pick a time shortly after the backup normally finishes: CloudWatch will not accept a timestamp more than two hours ahead of when it is sent |
 
 **Note** You need to provide a host, username and password for every database you specify in the `DATABASE_NAMES` parameter.
 
