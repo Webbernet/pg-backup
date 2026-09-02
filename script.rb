@@ -9,6 +9,7 @@ BACKUP_BUCKET_REGION = ENV['S3_REGION']
 SLEEP_INTERVAL       = (ENV['SLEEP_INTERVAL'] || 1800).to_i
 MIN_BACKUP_BYTES     = (ENV['MIN_BACKUP_BYTES'] || 1024).to_i
 METRIC_NAMESPACE     = ENV['CLOUDWATCH_METRIC_NAMESPACE']
+METRIC_TIMESTAMP_UTC = ENV.fetch('METRIC_TIMESTAMP_UTC', '12:00')
 
 class SendToLog
   def self.call(msg)
@@ -69,6 +70,7 @@ class BackupProcess
   def publish_metric
     return if METRIC_NAMESPACE.nil?
 
+    timestamp = metric_timestamp
     cloudwatch = Aws::CloudWatch::Client.new(region: BACKUP_BUCKET_REGION)
     cloudwatch.put_metric_data(
       namespace: METRIC_NAMESPACE,
@@ -76,12 +78,19 @@ class BackupProcess
         metric_name: 'BackupBytes',
         dimensions: [{ name: 'Database', value: @db_name }],
         unit: 'Bytes',
-        value: @backup_bytes
+        value: @backup_bytes,
+        timestamp: timestamp
       }]
     )
-    SendToLog.call('Published BackupBytes metric')
+    SendToLog.call("Published BackupBytes metric stamped #{timestamp}")
   rescue StandardError => e
     SendToLog.call("Metric publish failed for #{@db_name} (backup already uploaded) - #{e}")
+  end
+
+  def metric_timestamp
+    hour, minute = METRIC_TIMESTAMP_UTC.split(':').map(&:to_i)
+    today = Time.now.utc
+    Time.utc(today.year, today.month, today.day, hour, minute)
   end
 
   def delete_backup
