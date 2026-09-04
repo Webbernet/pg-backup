@@ -13,8 +13,7 @@ RUN apt-get update && apt-get install -y \
   supervisor \
   software-properties-common \
   locales \
-  postgresql-client-12 \
-  postgresql-12
+  postgresql-client-16
 
 RUN gem install aws-sdk-s3 aws-sdk-cloudwatch
 
