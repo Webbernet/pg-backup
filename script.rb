@@ -9,7 +9,6 @@ BACKUP_BUCKET_REGION = ENV['S3_REGION']
 SLEEP_INTERVAL       = (ENV['SLEEP_INTERVAL'] || 1800).to_i
 MIN_BACKUP_BYTES     = (ENV['MIN_BACKUP_BYTES'] || 1024).to_i
 METRIC_NAMESPACE     = ENV['CLOUDWATCH_METRIC_NAMESPACE']
-METRIC_TIMESTAMP_UTC = ENV.fetch('METRIC_TIMESTAMP_UTC', '12:00')
 
 class SendToLog
   def self.call(msg)
@@ -29,7 +28,10 @@ class BackupProcess
     pg_dump
     verify_backup
     upload_to_s3
-    publish_metric
+    publish_metric(@backup_bytes)
+  rescue StandardError
+    publish_metric(0)
+    raise
   ensure
     delete_backup
   end
@@ -67,10 +69,12 @@ class BackupProcess
     @backup_bytes = obj.content_length
   end
 
-  def publish_metric
+  # Publishes tonight's backup size. On success this is the uploaded object's
+  # size; on any failure it is 0, so a refused or crashed dump shows up in
+  # CloudWatch as a value rather than as a gap in the data.
+  def publish_metric(bytes)
     return if METRIC_NAMESPACE.nil?
 
-    timestamp = metric_timestamp
     cloudwatch = Aws::CloudWatch::Client.new(region: BACKUP_BUCKET_REGION)
     cloudwatch.put_metric_data(
       namespace: METRIC_NAMESPACE,
@@ -78,19 +82,12 @@ class BackupProcess
         metric_name: 'BackupBytes',
         dimensions: [{ name: 'Database', value: @db_name }],
         unit: 'Bytes',
-        value: @backup_bytes,
-        timestamp: timestamp
+        value: bytes
       }]
     )
-    SendToLog.call("Published BackupBytes metric stamped #{timestamp}")
+    SendToLog.call("Published BackupBytes=#{bytes} for #{@db_name}")
   rescue StandardError => e
-    SendToLog.call("Metric publish failed for #{@db_name} (backup already uploaded) - #{e}")
-  end
-
-  def metric_timestamp
-    hour, minute = METRIC_TIMESTAMP_UTC.split(':').map(&:to_i)
-    today = Time.now.utc
-    Time.utc(today.year, today.month, today.day, hour, minute)
+    SendToLog.call("Metric publish failed for #{@db_name} - #{e}")
   end
 
   def delete_backup
